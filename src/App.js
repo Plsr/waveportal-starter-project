@@ -3,21 +3,49 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import './App.css';
 import abi from "./utils/WavePortal.json";
-import { wait } from "@testing-library/react";
 
 export default function App() {
   const [currentAccount, setCurrentAccount] = useState("");
   const [isLoadingCount, setIsLoadingCount] = useState(true);
   const [isMining, setIsMining] = useState(false);
   const [totalCount, setTotalCount] = useState(0)
+  const [allWaves, setAllWaves] = useState([])
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     checkIfWalletConnected()
     getTotalCount()
+    getAllWaves()
   }, [])
 
-  const contractAddress = '0x88861d329b5210612d3e0287d8715DC494Ac4c0d'
+  const contractAddress = '0x58e301282a908CE474A77A55ef104B8941B69A4f'
   const contractABI = abi.abi;
+
+  const getAllWaves = async () => {
+    try {
+      const wavePortalContract = getContract()
+      const waves = await wavePortalContract.getAllWaves()
+
+      const wavesCleaned = waves.map(wave => ({
+        address: wave.waver,
+        timestamp: new Date(wave.timestamp * 1000),
+        message: wave.message
+      }))
+      
+      setAllWaves(wavesCleaned)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const getContract = () => {
+    const { ethereum } = window
+    
+    if(!ethereum) return
+    const provider = new ethers.providers.Web3Provider(ethereum)
+    const signer = provider.getSigner()
+    return new ethers.Contract(contractAddress, contractABI, signer)
+  }
 
   const getTotalCount = async () => {
     setIsLoadingCount(true)
@@ -81,6 +109,8 @@ export default function App() {
     }
   }
 
+  const handleMessageChange = event => setMessage(event.target.value)
+
   const wave = async () => {
     try {
       const { ethereum } = window
@@ -90,7 +120,7 @@ export default function App() {
         const signer = provider.getSigner()
         const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer)
 
-        const waveTxn = await wavePortalContract.wave()
+        const waveTxn = await wavePortalContract.wave(message)
         setIsMining(true)
         console.log("Mining -- ", waveTxn.hash)
         await waveTxn.wait()
@@ -98,7 +128,9 @@ export default function App() {
         console.log("Mined -- ", waveTxn.hash)
 
         let count = await wavePortalContract.getTotalWaves()
-        setTotalCount(count)
+        setTotalCount(count.toNumber())
+        getAllWaves()
+        setMessage('')
         console.log("Retrieved total wave count: ", count.toNumber())
       } else {
         console.log("Get metamask")
@@ -121,8 +153,9 @@ export default function App() {
         <div className="bio">
           I am Spacemoses1337, have no idea about crypto and am deploying smart contracts now. Doesn't sound like a good idea? Click the button below to make me stop!
         </div>
+        <input type="text" onChange={handleMessageChange} value={message} placeholder="Tell my why" />
 
-        <button className="waveButton" onClick={wave}>
+        <button className="waveButton" disabled={message.length <= 0} onClick={wave}>
           { isMining ? '⛏ Mining...' : '🔥 Make me stop 🔥' }
         </button>
 
@@ -140,6 +173,15 @@ export default function App() {
             Connect Wallet
           </button>
         )}
+
+        {allWaves.map((wave, index) => {
+          return (
+            <div key={index} style={{ backgroundColor: "OldLace", marginTop: "16px", padding: "8px" }}>
+              <div>Address: {wave.address}</div>
+              <div>Time: {wave.timestamp.toString()}</div>
+              <div>Message: {wave.message}</div>
+            </div>)
+        })}
       </div>
     </div>
   );
