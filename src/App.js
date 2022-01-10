@@ -18,7 +18,7 @@ export default function App() {
     getAllWaves()
   }, [])
 
-  const contractAddress = '0x58e301282a908CE474A77A55ef104B8941B69A4f'
+  const contractAddress = '0xdd43C9770B71fDf753F313bb329f4d4f1dcf5d74'
   const contractABI = abi.abi;
 
   const getAllWaves = async () => {
@@ -50,13 +50,9 @@ export default function App() {
   const getTotalCount = async () => {
     setIsLoadingCount(true)
     try {
-      const { ethereum } = window
+      const wavePortalContract = getContract()
 
-      if(ethereum) {
-        const provider = new ethers.providers.Web3Provider(ethereum)
-        const signer = provider.getSigner()
-        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer)
-
+      if(wavePortalContract) {
         let count = await wavePortalContract.getTotalWaves()
         console.log("Retrieved total wave count: ", count.toNumber())
         setTotalCount(count.toNumber())
