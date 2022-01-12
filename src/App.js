@@ -16,10 +16,24 @@ export default function App() {
     checkIfWalletConnected()
     getTotalCount()
     getAllWaves()
+    setNewWaveListener()
+
+    return () => {
+      const wavePortalContract = getContract()
+      if(wavePortalContract) {
+        wavePortalContract.off("NewWave", onNewWave)
+      }
+    }
   }, [])
 
-  const contractAddress = '0xdd43C9770B71fDf753F313bb329f4d4f1dcf5d74'
+  const contractAddress = '0x2ffD1020D9D71B6aaA8Dce4FB73498c1DF502886'
   const contractABI = abi.abi;
+
+  const setNewWaveListener = () => {
+    if(!window.ethereum) return
+    const wavePortalContract = getContract()
+    wavePortalContract.on("NewWave", onNewWave)
+  }
 
   const getAllWaves = async () => {
     try {
@@ -61,6 +75,17 @@ export default function App() {
     } catch(error) {
       console.log(error)
     }
+  }
+
+  const onNewWave = (from, timestamp, message) => {
+    setAllWaves(prevState => [
+      ...prevState,
+      {
+        address: from,
+        timestamp: new Date(timestamp * 1000),
+        message: message,
+      },
+    ]);
   }
 
   const checkIfWalletConnected = async () => {
@@ -116,7 +141,7 @@ export default function App() {
         const signer = provider.getSigner()
         const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer)
 
-        const waveTxn = await wavePortalContract.wave(message)
+        const waveTxn = await wavePortalContract.wave(message, { gasLimit: 300000 })
         setIsMining(true)
         console.log("Mining -- ", waveTxn.hash)
         await waveTxn.wait()
@@ -125,7 +150,6 @@ export default function App() {
 
         let count = await wavePortalContract.getTotalWaves()
         setTotalCount(count.toNumber())
-        getAllWaves()
         setMessage('')
         console.log("Retrieved total wave count: ", count.toNumber())
       } else {
